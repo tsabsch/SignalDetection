@@ -9,7 +9,7 @@ This repository contains an analysis of the [HEPMASS](archive.ics.uci.edu/ml/dat
 
 ## Installation
 
-The analysis is performed and visualised in [Jupyter Notebooks](http://jupyter.org/). You can install and run jupyter with the following commands:
+The analysis is performed with python3 and visualised in [Jupyter Notebooks](http://jupyter.org/). You can install and run jupyter with the following commands:
 
 ```
 $ pip install jupyter
