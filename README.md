@@ -35,3 +35,22 @@ The data files are assumed to be within the directory `data`. If you have placed
 
 ## Remarks
 This analysis has been made as part of the course [__Advanced Topics in Machine Learning__](http://www.findke.ovgu.de/findke/en/Studies/Courses/Summer+Term+2017/Advanced+Topics+in+Machine+Learning.html) at the Otto-von-Guericke-University Magdeburg.
+
+
+## Concept
+The analysis should fulfill several criteria: Firstly, the data needs to be cleaned in order to handle missing values and potential outliers. Secondly, two machine learning algorithms should be selected for classification, both providing an online (stream-based) as well as an offline variant.
+
+In the following, the prepared concept for these requirements is presented in detail.
+
+### Preprocessing
+Data preparation is started by checking for __missing or erroneous data__. Furthermore, we want to ensure that there is an __equal distribution of classes__, because otherwise we might need to consider data augmentation methods.
+
+As more advanced preprocessing steps we plan on performing __outlier detection__, finding __correlations between certain features__ and applying __Principal Component Analysis__ (PCA). Boxplots on single features for a subsample of the data already gave us a first idea about the presence of outliers:
+![Feature Boxplots](feature_boxplots.png)
+
+In order to investigate feature correlations, we inspected all dual combinations of features as can be seen in the following plots. Again only a subsample of the data set was used.
+![Feature Correlations](feature_correlations.png)
+
+### Classification
+The first approach to be used for classification will be a __Multilayer Perceptron__ (MLP). It should work well for the high number of features in our data set and natively supports online and offline application, because it can be trained in batches. A working module is available from [Scikit-learn](http://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html)
+
