@@ -52,5 +52,9 @@ In order to investigate feature correlations, we inspected all dual combinations
 ![Feature Correlations](feature_correlations.png)
 
 ### Classification
-The first approach to be used for classification will be a __Multilayer Perceptron__ (MLP). It should work well for the high number of features in our data set and natively supports online and offline application, because it can be trained in batches. A working module is available from [Scikit-learn](http://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html)
+The first approach to be used for classification will be a __Multilayer Perceptron__ (MLP). It should work well for the high number of features in our data set and natively supports online and offline application, because it can be trained in batches. A working module is available from [Scikit-learn](http://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html).
+
+Our second machine learning approach will be __Naive Bayes__ with a Gaussian data distribution assumption. Again there is a [Scikit-learn module](http://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html) available that supports online and offline training.
+
+In case the Gaussian assumption of the Naive Bayes approach does not fit our data set, we can instead use __Hoeffding Trees__ as our second classification algorithm. Hoeffding Trees are a variant of decision trees that are designed for application on massive data streams. There are open source modules available, for example on [GitHub](https://github.com/vitords/HoeffdingTree).
 
