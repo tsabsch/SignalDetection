@@ -43,9 +43,10 @@ The analysis should fulfill several criteria: Firstly, the data needs to be clea
 In the following, the prepared concept for these requirements is presented in detail.
 
 ### Preprocessing
-Data preparation is started by checking for __missing or erroneous data__. Furthermore, we want to ensure that there is an __equal distribution of classes__, because otherwise we might need to consider data augmentation methods.
+Data preparation is started by checking for __missing or erroneous data__ and deleting or replacing them appropriately. Furthermore, we want to ensure that there is an __equal distribution of classes__. If this is not the case, either data augmentation or subsampling methods could be considered.
+A quick check provided the certainty that the classes are equally distributed and there is no missing data in the data set.
 
-As more advanced preprocessing steps we plan on performing __outlier detection__, finding __correlations between certain features__ and applying __Principal Component Analysis__ (PCA). Boxplots on single features for a subsample of the data already gave us a first idea about the presence of outliers:
+As more advanced preprocessing steps we plan on performing __outlier detection__, finding __correlations between certain features__ and applying __Principal Component Analysis__ (PCA). Outliers and highly correlated features could be excluded from the classification experiments, thus ensuring a more stable performance of the classifier. Boxplots on single features for a subsample of the data already gave us a first idea about the presence of outliers:
 ![Feature Boxplots](feature_boxplots.png)
 
 In order to investigate feature correlations, we inspected all dual combinations of features as can be seen in the following plots. Again only a subsample of the data set was used.
