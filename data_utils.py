@@ -29,8 +29,8 @@ def load_from(train_file, test_file):
 def generate_sample_set(r=0.001):
     data = dd.read_csv('data/all_train.csv')
     data = data.sample(r)
-    file = open('data/all_sample.csv', 'w')
-    data.compute().to_csv(file, index=False)
+    with open('data/all_sample.csv', 'w') as file:
+        data.compute().to_csv(file, index=False)
 
 def load_sample_data(sample_file):
     sample_rate = 0.001
