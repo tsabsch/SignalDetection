@@ -115,3 +115,11 @@ def mlp_ui():
         return mlp
 
     return init_mlp
+
+def nb_ui():
+    def init_nb():
+        naiveBayes = GaussianNB(priors=[0.5, 0.5])
+        naiveBayes.train = lambda x, y: naiveBayes.partial_fit(x, y, classes=[1,0])
+        return naiveBayes
+
+    return init_nb
