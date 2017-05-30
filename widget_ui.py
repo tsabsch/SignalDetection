@@ -271,8 +271,14 @@ def perform_prediction(
     
     # Load classifier
     if classifier_name == 'Multilayer Perceptron':
+        if 'trained' not in classifiers['mlp']:
+            print("No Multilayer Perceptron available for prediction.")
+            return
         classifier = classifiers['mlp']['trained']
     else:
+        if 'trained' not in classifiers['nb']:
+            print("No Naive Bayes classifier available for prediction.")
+            return
         classifier = classifiers['nb']['trained']
 
     print('Predict with {}'.format(classifier))
@@ -305,6 +311,7 @@ def perform_prediction(
         full_prediction = np.append(full_prediction, prediction)
         progress.value = data.ntest
 
+    # save result to file
     if to_save:
         classifier_str = classifier_name.replace(' ', '')
         pca_str = preprocessors['pca'].n_components_ if apply_pca else 'False'
@@ -313,6 +320,7 @@ def perform_prediction(
         np.save("results/{}_pca_{}_sample_{}_time_{}".format(
             classifier_str, pca_str, sample_str, timestamp), full_prediction)
 
+    # give early evaluation
     print("Accuracy: {:0.2f}".format(accuracy_score(
             data.test_data['# label'], full_prediction)))
     print(classification_report(data.test_data['# label'], full_prediction))
