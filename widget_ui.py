@@ -2,6 +2,7 @@ from ipywidgets import *
 from IPython.display import display
 import numpy as np
 import time
+import datetime
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import confusion_matrix
@@ -265,7 +266,7 @@ def predict_on_window(preprocessors, apply_pca, classifier, window):
     return prediction
 
 def perform_prediction(
-    data, preprocessors, apply_pca, window_size, classifiers, 
+    data, preprocessors, apply_pca, window_size, to_save, classifiers, 
     classifier_name):
     
     # Load classifier
@@ -289,19 +290,31 @@ def perform_prediction(
     )
     display(progress)
     
+    full_prediction = np.array([])
+
     for idx, row in enumerate(iterator):
         window = np.append(window, [row[1]], axis=0)
         if window.shape[0] == window_size:
             prediction = predict_on_window(
                 preprocessors, apply_pca, classifier, window)
+            full_prediction = np.append(full_prediction, prediction)
             conf_mat += confusion_matrix(window[:,0], prediction)
             window = np.zeros((0,29))
             progress.value = idx
     if len(window) > 0:
         prediction = predict_on_window(
             preprocessors, apply_pca, classifier, window)
+        full_prediction = np.append(full_prediction, prediction)
         conf_mat += confusion_matrix(window[:,0], prediction)
         progress.value = data.ntest
+
+    if to_save:
+        classifier_str = classifier_name.replace(' ', '')
+        pca_str = preprocessors['pca'].n_components_ if apply_pca else 'False'
+        sample_str = str(data.sample_rate).replace('.', '')
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        np.save("results/{}_pca_{}_sample_{}_time_{}".format(
+            classifier_str, pca_str, sample_str, timestamp), full_prediction)
 
     print(conf_mat)
 
@@ -335,6 +348,12 @@ def prediction_ui(data, sample_data, preprocessors, classifiers):
     )
     display(classifier_rb)
 
+    save_checkbox = Checkbox(
+        value=False,
+        description='Save Prediction to File'
+    )
+    display(save_checkbox)
+
     start_prediction = Button(
         description='Start prediction',
         button_style='info'
@@ -352,6 +371,7 @@ def prediction_ui(data, sample_data, preprocessors, classifiers):
             preprocessors=preprocessors, 
             apply_pca=pca_checkbox.value, 
             window_size=window_size_slider.value,
+            to_save = save_checkbox.value,
             classifiers=classifiers,
             classifier_name=classifier_rb.value)
 
