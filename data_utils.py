@@ -7,6 +7,7 @@ class DataSet:
     test_data = []
     ntrain = 0
     ntest = 0
+    sample_rate = 1.0
 
 def load_from(train_file, test_file):
     data = DataSet()
@@ -32,14 +33,17 @@ def generate_sample_set(r=0.001):
     data.compute().to_csv(file, index=False)
 
 def load_sample_data(sample_file):
+    sample_rate = 0.001
+
     if not os.path.isfile(sample_file):
-        generate_sample_set(0.001)
+        generate_sample_set(sample_rate)
 
     data = DataSet()
     data.train_data = dd.read_csv('data/all_sample.csv')
     data.test_data = data.train_data
-    data.ntrain = 7000000 * 0.001
+    data.ntrain = 7000000 * sample_rate
     data.ntest = data.ntrain
+    data.sample_rate = sample_rate
 
     return data
 
@@ -48,3 +52,4 @@ def subsample_data(data, r, output_data):
     output_data.test_data = data.test_data.sample(r)
     output_data.ntrain = int(data.ntrain * r)
     output_data.ntest = int(data.ntest * r)
+    output_data.sample_rate = r
