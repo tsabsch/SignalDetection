@@ -35,10 +35,10 @@ def pca_ui(data):
 
     # Wrap resulting transformation in a function so that it is only
     # evaluated in the end, because there may be intermediate results.
-    def pca_func(features):
-        return i.result.transform(features)
+    def init_pca():
+        return i.result
 
-    return pca_func
+    return init_pca
 
 def set_max_iter(m, max_iter):
     max_iter[0] = m
