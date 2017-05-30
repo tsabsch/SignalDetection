@@ -5,7 +5,7 @@ import time
 import datetime
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score ,classification_report
 import sklearn.decomposition as skdecomp
 import data_utils
 
@@ -279,7 +279,6 @@ def perform_prediction(
     
     iterator = data.test_data.iterrows()
     window = np.zeros((0,29))
-    conf_mat = np.zeros((2, 2))
     
     progress = IntProgress(
         min=0,
@@ -298,14 +297,12 @@ def perform_prediction(
             prediction = predict_on_window(
                 preprocessors, apply_pca, classifier, window)
             full_prediction = np.append(full_prediction, prediction)
-            conf_mat += confusion_matrix(window[:,0], prediction)
             window = np.zeros((0,29))
             progress.value = idx
     if len(window) > 0:
         prediction = predict_on_window(
             preprocessors, apply_pca, classifier, window)
         full_prediction = np.append(full_prediction, prediction)
-        conf_mat += confusion_matrix(window[:,0], prediction)
         progress.value = data.ntest
 
     if to_save:
@@ -316,7 +313,9 @@ def perform_prediction(
         np.save("results/{}_pca_{}_sample_{}_time_{}".format(
             classifier_str, pca_str, sample_str, timestamp), full_prediction)
 
-    print(conf_mat)
+    print("Accuracy: {:0.2f}".format(accuracy_score(
+            data.test_data['# label'], full_prediction)))
+    print(classification_report(data.test_data['# label'], full_prediction))
 
 def prediction_ui(data, sample_data, preprocessors, classifiers):
     use_sample_data = Checkbox(
