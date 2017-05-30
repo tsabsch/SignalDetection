@@ -28,6 +28,38 @@ def subsampling_ui(all_data, output_data):
 
 #### Preprocessing ####
 
+def remove_correlations(preprocessors, corr, thres):
+    remove = set()
+    for col1 in range(1, len(corr)):
+        for col2 in range(col1 + 1, len(corr)):
+            if corr.values[col1][col2] > thres:
+                remove.add(corr.columns[col1])
+                break
+    if remove:
+        print('Features to be removed: {}.'.format(', '.join(remove)))
+    else:
+        print('For this threshold, no feature will be removed.')
+
+    preprocessors['corr'] = remove
+
+def correlations_ui(preprocessors, data):
+    thres = FloatSlider(
+        value=0.7,
+        min=0,
+        max=1,
+        step=0.05,
+        description='Threshold:',
+        continuous_update=False,
+        layout=Layout(width='80%')
+    )
+    i = interactive(
+        remove_correlations, 
+        preprocessors=fixed(preprocessors),
+        corr=fixed(data.train_data.corr().compute()), 
+        thres=thres
+    )
+    display(i)
+
 def perform_pca(preprocessors, data, n):
     pca = skdecomp.PCA(n_components=n)
     features = data.drop('# label', axis=1).compute()
