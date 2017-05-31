@@ -12,7 +12,7 @@ import data_utils
 
 #### Data Preparation ####
 
-def subsampling_ui(all_data, output_data):
+def subsampling_ui(orig_data, output_data):
     sampling_rate = BoundedFloatText(
         value=0.0001,
         min=0,
@@ -21,7 +21,7 @@ def subsampling_ui(all_data, output_data):
     )
     i = interact(
         data_utils.subsample_data, 
-        data=fixed(all_data), 
+        data=fixed(orig_data), 
         r=sampling_rate, 
         output_data=fixed(output_data)
     )

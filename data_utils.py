@@ -9,6 +9,15 @@ class DataSet:
     ntest = 0
     sample_rate = 1.0
 
+    def copy(self):
+        c = DataSet()
+        c.train_data = self.train_data.copy()
+        c.test_data = self.test_data.copy()
+        c.ntrain = self.ntrain
+        c.ntest = self.ntest
+        c.sample_rate = self.sample_rate
+        return c
+
 def load_from(train_file, test_file):
     data = DataSet()
     data.train_data = dd.read_csv(train_file)
