@@ -43,6 +43,8 @@ def remove_correlations(preprocessors, corr, thres):
 
     preprocessors['corr'] = remove
 
+    # TODO: Refresh PCA if PCA is enabled
+
 def correlations_ui(preprocessors, data):
     thres = FloatSlider(
         value=0.7,
@@ -65,27 +67,54 @@ def perform_pca(preprocessors, data, n):
     pca = skdecomp.PCA(n_components=n)
     features = data.drop('# label', axis=1).compute()
     pca.fit(features)
-    print('PCA with {} principal components computed.'.format(n))
-
     preprocessors['pca'] = pca
 
+def enable_pca(enabled, ncomp_interactive, preprocessors, data):
+    if enabled:
+        # show slider
+        ncomp_interactive.layout = Layout(display='block')
+
+        # perform pca
+        n = ncomp_interactive.children[0].value
+        perform_pca(preprocessors, data, n)
+    else:
+        # hide slider
+        ncomp_interactive.layout = Layout(display='none')
+
+        # remove existing PCA
+        if 'pca' in preprocessors:
+            del preprocessors['pca']
+
 def pca_ui(preprocessors, data):
-    ncomponents = IntSlider(
+    ncomp_slider = IntSlider(
         value=5,
-        min=1,
-        max=len(data.train_data.columns),
+        min=0,
+        max=len(data.train_data.columns)-1,
         step=1,
         description='Num components:',
         continuous_update=False,
         layout=Layout(width='80%')
     )
-    i = interactive(
+    ncomp_interactive = interactive(
         perform_pca, 
         preprocessors=fixed(preprocessors),
         data=fixed(data.train_data), 
-        n=ncomponents
+        n=ncomp_slider
     )
-    display(i)
+
+    pca_checkbox = Checkbox(
+        value=False,
+        description='Apply PCA'
+    )
+    i = interact(
+        enable_pca, 
+        enabled=pca_checkbox,
+        ncomp_interactive=fixed(ncomp_interactive),
+        preprocessors=fixed(preprocessors),
+        data=fixed(data.train_data)
+    )
+
+    display(ncomp_interactive)
 
 
 #### Classifiers ####
@@ -180,12 +209,12 @@ def nb_ui(classifiers):
 
 #### Training ####
 
-def train_on_window(preprocessors, apply_pca, classifier, window):
+def train_on_window(preprocessors, classifier, window):
     labels = window[:, 0]
     features = window[:, 1:29]
     
     # Optionally apply PCA
-    if apply_pca:
+    if 'pca' in preprocessors:
         features = preprocessors['pca'].transform(features)
     
     # Train classifier
@@ -193,8 +222,7 @@ def train_on_window(preprocessors, apply_pca, classifier, window):
 
 
 def perform_training(
-    data, preprocessors, apply_pca, window_size, classifiers, 
-    classifier_name):
+    data, preprocessors, window_size, classifiers, classifier_name):
     
     # Initialize classifier
     if classifier_name == 'Multilayer Perceptron':
@@ -222,11 +250,11 @@ def perform_training(
     for idx, row in enumerate(iterator):
         window = np.append(window, [row[1]], axis=0)
         if window.shape[0] == window_size:
-            train_on_window(preprocessors, apply_pca, classifier, window)
+            train_on_window(preprocessors, classifier, window)
             window = np.zeros((0,29))
             progress.value = idx
     if len(window) > 0:
-        train_on_window(preprocessors, apply_pca, classifier, window)
+        train_on_window(preprocessors, classifier, window)
         progress.value = data.ntrain
 
     print('Time taken: {}'.format(time.time() - start_time))
@@ -237,12 +265,6 @@ def training_ui(data, sample_data, preprocessors, classifiers):
         description='Use fast sample data'
     )
     display(use_sample_data)
-
-    pca_checkbox = Checkbox(
-        value=False,
-        description='Apply PCA'
-    )
-    display(pca_checkbox)
 
     window_size_slider = IntSlider(
         value=500,
@@ -268,15 +290,9 @@ def training_ui(data, sample_data, preprocessors, classifiers):
     display(start_training)
 
     def training_func(*args):
-        if use_sample_data.value:
-            d = sample_data
-        else:
-            d = data
-
         perform_training(
-            data=d, 
-            preprocessors=preprocessors, 
-            apply_pca=pca_checkbox.value, 
+            data=sample_data if use_sample_data.value else data, 
+            preprocessors=preprocessors,
             window_size=window_size_slider.value,
             classifiers=classifiers,
             classifier_name=classifier_rb.value)
@@ -286,11 +302,11 @@ def training_ui(data, sample_data, preprocessors, classifiers):
 
 #### Prediction ####
 
-def predict_on_window(preprocessors, apply_pca, classifier, window):
+def predict_on_window(preprocessors, classifier, window):
     features = window[:, 1:29]
     
     # Optionally apply PCA
-    if apply_pca:
+    if 'pca' in preprocessors:
         features = preprocessors['pca'].transform(features)
     
     # Predict
@@ -298,8 +314,7 @@ def predict_on_window(preprocessors, apply_pca, classifier, window):
     return prediction
 
 def perform_prediction(
-    data, preprocessors, apply_pca, window_size, to_save, classifiers, 
-    classifier_name):
+    data, preprocessors, window_size, to_save, classifiers, classifier_name):
     
     # Load classifier
     if classifier_name == 'Multilayer Perceptron':
@@ -332,21 +347,20 @@ def perform_prediction(
     for idx, row in enumerate(iterator):
         window = np.append(window, [row[1]], axis=0)
         if window.shape[0] == window_size:
-            prediction = predict_on_window(
-                preprocessors, apply_pca, classifier, window)
+            prediction = predict_on_window(preprocessors, classifier, window)
             full_prediction = np.append(full_prediction, prediction)
             window = np.zeros((0,29))
             progress.value = idx
     if len(window) > 0:
-        prediction = predict_on_window(
-            preprocessors, apply_pca, classifier, window)
+        prediction = predict_on_window(preprocessors, classifier, window)
         full_prediction = np.append(full_prediction, prediction)
         progress.value = data.ntest
 
     # save result to file
     if to_save:
         classifier_str = classifier_name.replace(' ', '')
-        pca_str = preprocessors['pca'].n_components_ if apply_pca else 'False'
+        pca_str = preprocessors['pca'].n_components_ \
+                  if 'pca' in preprocessors else 'False'
         sample_str = str(data.sample_rate).replace('.', '')
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         np.save("results/{}_pca_{}_sample_{}_time_{}".format(
@@ -363,12 +377,6 @@ def prediction_ui(data, sample_data, preprocessors, classifiers):
         description='Use fast sample data'
     )
     display(use_sample_data)
-
-    pca_checkbox = Checkbox(
-        value=False,
-        description='Apply PCA'
-    )
-    display(pca_checkbox)
 
     window_size_slider = IntSlider(
         value=500,
@@ -400,15 +408,9 @@ def prediction_ui(data, sample_data, preprocessors, classifiers):
     display(start_prediction)
 
     def prediction_func(*args):
-        if use_sample_data.value:
-            d = sample_data
-        else:
-            d = data
-
         perform_prediction(
-            data=d, 
-            preprocessors=preprocessors, 
-            apply_pca=pca_checkbox.value, 
+            data=sample_data if use_sample_data.value else data, 
+            preprocessors=preprocessors,
             window_size=window_size_slider.value,
             to_save = save_checkbox.value,
             classifiers=classifiers,
