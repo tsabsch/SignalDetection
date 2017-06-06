@@ -29,24 +29,69 @@ def subsampling_ui(orig_data, output_data):
 
 #### Preprocessing ####
 
-def remove_correlations(preprocessors, corr, thres):
-    remove = set()
+def remove_correlations(preprocessors, data, thres):
+    corr = data.corr().compute()
+    remove = []
     for col1 in range(1, len(corr)):
         for col2 in range(col1 + 1, len(corr)):
             if corr.values[col1][col2] > thres:
-                remove.add(corr.columns[col1])
+                remove.append(corr.columns[col1])
                 break
     if remove:
         print('Features to be removed: {}.'.format(', '.join(remove)))
+        preprocessors['corr'] = remove
     else:
         print('For this threshold, no feature will be removed.')
 
-    preprocessors['corr'] = remove
+def perform_pca(preprocessors, data, n):
+    pca = skdecomp.PCA(n_components=n)
+    features = data.drop('# label', axis=1).compute()
+    pca.fit(features)
+    print('A PCA with {} pricipal components will be applied.'.format(n))
+    preprocessors['pca'] = pca
+    
+def enable_preprocessing(selected, thres_interactive, ncomp_interactive, preprocessors, data):
+    if selected == 'no preprocessing':
+        # hide sliders
+        thres_interactive.layout = Layout(display='none')
+        ncomp_interactive.layout = Layout(display='none')
 
-    # TODO: Refresh PCA if PCA is enabled
-
-def correlations_ui(preprocessors, data):
-    thres = FloatSlider(
+        # remove existing Pearson correlated features
+        if 'corr' in preprocessors:
+            del preprocessors['corr']
+        # remove existing PCA
+        if 'pca' in preprocessors:
+            del preprocessors['pca']
+        # delete print output
+        print('')
+    elif selected == 'Pearson correlation coefficient':
+        # hide PCA slider
+        ncomp_interactive.layout = Layout(display='none')
+        # remove existing PCA
+        if 'pca' in preprocessors:
+            del preprocessors['pca']
+            
+        # show Pearson correlation coefficient slider
+        thres_interactive.layout = Layout(display='block')
+        # calculate correlations
+        thres = thres_interactive.children[0].value
+        remove_correlations(preprocessors, data, thres)
+    elif selected == 'PCA':
+        # hide Pearson correlation coefficient slider
+        thres_interactive.layout = Layout(display='none')
+        # remove existing Pearson correlated features
+        if 'corr' in preprocessors:
+            del preprocessors['corr']
+            
+        # show slider
+        ncomp_interactive.layout = Layout(display='block')
+        # perform pca
+        n = ncomp_interactive.children[0].value
+        perform_pca(preprocessors, data, n)
+    
+def preprocessors_ui(preprocessors, data):
+    # Pearson correlation coefficient - threshold
+    thres_slider = FloatSlider(
         value=0.7,
         min=0,
         max=1,
@@ -55,41 +100,18 @@ def correlations_ui(preprocessors, data):
         continuous_update=False,
         layout=Layout(width='80%')
     )
-    i = interactive(
+    thres_interactive = interactive(
         remove_correlations, 
         preprocessors=fixed(preprocessors),
-        corr=fixed(data.train_data.corr().compute()), 
-        thres=thres
+        data=fixed(data.train_data), 
+        thres=thres_slider
     )
-    display(i)
-
-def perform_pca(preprocessors, data, n):
-    pca = skdecomp.PCA(n_components=n)
-    features = data.drop('# label', axis=1).compute()
-    pca.fit(features)
-    preprocessors['pca'] = pca
-
-def enable_pca(enabled, ncomp_interactive, preprocessors, data):
-    if enabled:
-        # show slider
-        ncomp_interactive.layout = Layout(display='block')
-
-        # perform pca
-        n = ncomp_interactive.children[0].value
-        perform_pca(preprocessors, data, n)
-    else:
-        # hide slider
-        ncomp_interactive.layout = Layout(display='none')
-
-        # remove existing PCA
-        if 'pca' in preprocessors:
-            del preprocessors['pca']
-
-def pca_ui(preprocessors, data):
+    
+    # PCA - number of principal components
     ncomp_slider = IntSlider(
         value=5,
         min=0,
-        max=len(data.train_data.columns)-1,
+        max=len(data.train_data.columns) - 1,
         step=1,
         description='Num components:',
         continuous_update=False,
@@ -101,19 +123,25 @@ def pca_ui(preprocessors, data):
         data=fixed(data.train_data), 
         n=ncomp_slider
     )
-
-    pca_checkbox = Checkbox(
-        value=False,
-        description='Apply PCA'
+    
+    # selection of preprocessing method
+    select = widgets.Dropdown(
+        options=['no preprocessing', 'Pearson correlation coefficient', 'PCA'],
+        value='no preprocessing',
+        description='Preprocessing:',
+        disabled=False
     )
+    
     i = interact(
-        enable_pca, 
-        enabled=pca_checkbox,
+        enable_preprocessing,
+        selected=select,
+        thres_interactive=fixed(thres_interactive),
         ncomp_interactive=fixed(ncomp_interactive),
         preprocessors=fixed(preprocessors),
         data=fixed(data.train_data)
     )
-
+    
+    display(thres_interactive)
     display(ncomp_interactive)
 
 
@@ -220,7 +248,6 @@ def train_on_window(preprocessors, classifier, window):
     # Train classifier
     classifier.fit(features, labels)
 
-
 def perform_training(
     data, preprocessors, window_size, classifiers, classifier_name):
     
@@ -235,8 +262,12 @@ def perform_training(
     print('Training {}'.format(classifier))
     start_time = time.time()
     
+    # Otionally remove Pearson correlated features
+    if 'corr' in preprocessors:
+        data.train_data = data.train_data.drop(preprocessors['corr'], axis=1) 
+    
     iterator = data.train_data.iterrows()
-    window = np.zeros((0,29))
+    window = np.zeros((0, len(data.train_data.columns)))
     
     progress = IntProgress(
         min=0,
@@ -251,7 +282,7 @@ def perform_training(
         window = np.append(window, [row[1]], axis=0)
         if window.shape[0] == window_size:
             train_on_window(preprocessors, classifier, window)
-            window = np.zeros((0,29))
+            window = np.zeros((0, len(data.train_data.columns)))
             progress.value = idx
     if len(window) > 0:
         train_on_window(preprocessors, classifier, window)
@@ -303,7 +334,7 @@ def training_ui(data, sample_data, preprocessors, classifiers):
 #### Prediction ####
 
 def predict_on_window(preprocessors, classifier, window):
-    features = window[:, 1:29]
+    features = window[:, 1:]
     
     # Optionally apply PCA
     if 'pca' in preprocessors:
@@ -330,8 +361,12 @@ def perform_prediction(
 
     print('Predict with {}'.format(classifier))
     
+    # Optionally remove Pearson correlated features
+    if 'corr' in preprocessors:
+        data.test_data = data.test_data.drop(preprocessors['corr'], axis=1)
+    
     iterator = data.test_data.iterrows()
-    window = np.zeros((0,29))
+    window = np.zeros((0, len(data.test_data.columns)))
     
     progress = IntProgress(
         min=0,
@@ -349,7 +384,7 @@ def perform_prediction(
         if window.shape[0] == window_size:
             prediction = predict_on_window(preprocessors, classifier, window)
             full_prediction = np.append(full_prediction, prediction)
-            window = np.zeros((0,29))
+            window = np.zeros((0, len(data.test_data.columns)))
             progress.value = idx
     if len(window) > 0:
         prediction = predict_on_window(preprocessors, classifier, window)
