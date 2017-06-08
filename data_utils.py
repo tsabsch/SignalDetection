@@ -50,7 +50,7 @@ def load_sample_data(sample_file):
     data = DataSet()
     data.train_data = dd.read_csv('data/all_sample.csv')
     data.test_data = data.train_data
-    data.ntrain = 7000000 * sample_rate
+    data.ntrain = int(7000000 * sample_rate)
     data.ntest = data.ntrain
     data.sample_rate = sample_rate
 
