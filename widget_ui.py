@@ -238,10 +238,13 @@ def nb_ui(classifiers):
 
 #### Training ####
 
-def train_on_window(preprocessors, classifier, window):
-    labels = window[:, 0]
-    features = window[:, 1:29]
+def train_on_window(preprocessors, classifier, window):                             
+    labels = window["# label"]
+    features = window[list(window.columns[1:])]                        
     
+    # Optionally remove Pearson correlated features
+    if 'corr' in preprocessors:
+        features = features.drop(preprocessors['corr'], axis=1)
     # Optionally apply PCA
     if 'pca' in preprocessors:
         features = preprocessors['pca'].transform(features)
@@ -263,13 +266,6 @@ def perform_training(
     print('Training {}'.format(classifier))
     start_time = time.time()
     
-    # Optionally remove Pearson correlated features
-    if 'corr' in preprocessors:
-        data.train_data = data.train_data.drop(preprocessors['corr'], axis=1) 
-    
-    iterator = data.train_data.iterrows()
-    window = np.zeros((0, len(data.train_data.columns)))
-    
     progress = IntProgress(
         min=0,
         max=data.ntrain,
@@ -279,15 +275,12 @@ def perform_training(
     )
     display(progress)
     
-    for idx, row in enumerate(iterator):
-        window = np.append(window, [row[1]], axis=0)
-        if window.shape[0] == window_size:
-            train_on_window(preprocessors, classifier, window)
-            window = np.zeros((0, len(data.train_data.columns)))
-            progress.value = idx
-    if len(window) > 0:
+    # process data in windows
+    for i in range(0, int(data.ntrain) + 1, window_size):
+        progress.value = i
+        window = data.train_data[i:i + window_size - 1].compute()
         train_on_window(preprocessors, classifier, window)
-        progress.value = data.ntrain
+    progress.value = data.ntrain
 
     print('Time taken: {}'.format(time.time() - start_time))
 
@@ -335,8 +328,11 @@ def training_ui(data, sample_data, preprocessors, classifiers):
 #### Prediction ####
 
 def predict_on_window(preprocessors, classifier, window):
-    features = window[:, 1:]
+    features = window[list(window.columns[1:])] 
     
+    # Optionally remove Pearson correlated features
+    if 'corr' in preprocessors:
+        features = features.drop(preprocessors['corr'], axis=1)
     # Optionally apply PCA
     if 'pca' in preprocessors:
         features = preprocessors['pca'].transform(features)
@@ -348,7 +344,7 @@ def predict_on_window(preprocessors, classifier, window):
 def perform_prediction(
     data, preprocessors, window_size, to_save, classifiers, classifier_name):
     
-    # Load classifier
+    # load classifier
     if classifier_name == 'Multilayer Perceptron':
         if 'trained' not in classifiers['mlp']:
             print("No Multilayer Perceptron available for prediction.")
@@ -361,14 +357,7 @@ def perform_prediction(
         classifier = classifiers['nb']['trained']
 
     print('Predict with {}'.format(classifier))
-    
-    # Optionally remove Pearson correlated features
-    if 'corr' in preprocessors:
-        data.test_data = data.test_data.drop(preprocessors['corr'], axis=1)
-    
-    iterator = data.test_data.iterrows()
-    window = np.zeros((0, len(data.test_data.columns)))
-    
+        
     progress = IntProgress(
         min=0,
         max=data.ntest,
@@ -379,18 +368,14 @@ def perform_prediction(
     display(progress)
     
     full_prediction = np.array([])
-
-    for idx, row in enumerate(iterator):
-        window = np.append(window, [row[1]], axis=0)
-        if window.shape[0] == window_size:
-            prediction = predict_on_window(preprocessors, classifier, window)
-            full_prediction = np.append(full_prediction, prediction)
-            window = np.zeros((0, len(data.test_data.columns)))
-            progress.value = idx
-    if len(window) > 0:
+    
+    # process data in windows
+    for i in range(0, int(data.ntest) + 1, window_size):
+        progress.value = i
+        window = data.test_data[i:i + window_size - 1].compute
         prediction = predict_on_window(preprocessors, classifier, window)
         full_prediction = np.append(full_prediction, prediction)
-        progress.value = data.ntest
+    progress.value = data.ntest
 
     # save result to file
     if to_save:
