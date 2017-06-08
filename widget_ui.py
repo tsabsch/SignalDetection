@@ -285,7 +285,7 @@ def perform_training(
     display(progress)
     
     # process data in windows
-    for i in range(0, int(data.ntrain) + 1, window_size):
+    for i in range(0, data.ntrain, window_size):
         progress.value = i
         window = data.train_data[i:i + window_size - 1].compute()
         train_on_window(preprocessors, classifier, window)
@@ -379,9 +379,9 @@ def perform_prediction(
     full_prediction = np.array([])
     
     # process data in windows
-    for i in range(0, int(data.ntest) + 1, window_size):
+    for i in range(0, data.ntest, window_size):
         progress.value = i
-        window = data.test_data[i:i + window_size - 1].compute
+        window = data.test_data[i:i + window_size - 1].compute()
         prediction = predict_on_window(preprocessors, classifier, window)
         full_prediction = np.append(full_prediction, prediction)
     progress.value = data.ntest
