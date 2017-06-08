@@ -30,7 +30,7 @@ def subsampling_ui(orig_data, output_data):
 
 #### Preprocessing ####
 
-def remove_correlations(preprocessors, data, thres):
+def remove_correlations(preprocessors, data, thres, output):
     corr = data.corr().compute()
     remove = []
     for col1 in range(1, len(corr)):
@@ -39,16 +39,19 @@ def remove_correlations(preprocessors, data, thres):
                 remove.append(corr.columns[col1])
                 break
     if remove:
-        print('Features to be removed: {}.'.format(', '.join(remove)))
+        if output:
+            print('Features to be removed: {}.'.format(', '.join(remove)))
         preprocessors['corr'] = remove
     else:
-        print('For this threshold, no feature will be removed.')
+        if output:
+            print('For this threshold, no feature will be removed.')
 
-def perform_pca(preprocessors, data, n):
+def perform_pca(preprocessors, data, n, output):
     pca = skdecomp.PCA(n_components=n)
     features = data.drop('# label', axis=1).compute()
     pca.fit(features)
-    print('A PCA with {} pricipal components will be applied.'.format(n))
+    if output:
+        print('A PCA with {} pricipal components will be applied.'.format(n))
     preprocessors['pca'] = pca
     
 def enable_preprocessing(selected, thres_interactive, ncomp_interactive, preprocessors, data):
@@ -63,8 +66,6 @@ def enable_preprocessing(selected, thres_interactive, ncomp_interactive, preproc
         # remove existing PCA
         if 'pca' in preprocessors:
             del preprocessors['pca']
-        # delete print output
-        print('')
     elif selected == 'Pearson correlation coefficient':
         # hide PCA slider
         ncomp_interactive.layout = Layout(display='none')
@@ -76,7 +77,7 @@ def enable_preprocessing(selected, thres_interactive, ncomp_interactive, preproc
         thres_interactive.layout = Layout(display='block')
         # calculate correlations
         thres = thres_interactive.children[0].value
-        remove_correlations(preprocessors, data, thres)
+        remove_correlations(preprocessors, data, thres, output=False)
     elif selected == 'PCA':
         # hide Pearson correlation coefficient slider
         thres_interactive.layout = Layout(display='none')
@@ -88,7 +89,7 @@ def enable_preprocessing(selected, thres_interactive, ncomp_interactive, preproc
         ncomp_interactive.layout = Layout(display='block')
         # perform pca
         n = ncomp_interactive.children[0].value
-        perform_pca(preprocessors, data, n)
+        perform_pca(preprocessors, data, n, output=False)
     
 def preprocessors_ui(preprocessors, data):
     # Pearson correlation coefficient - threshold
@@ -105,7 +106,8 @@ def preprocessors_ui(preprocessors, data):
         remove_correlations, 
         preprocessors=fixed(preprocessors),
         data=fixed(data.train_data), 
-        thres=thres_slider
+        thres=thres_slider,
+        output=fixed(True)
     )
     
     # PCA - number of principal components
@@ -122,7 +124,8 @@ def preprocessors_ui(preprocessors, data):
         perform_pca, 
         preprocessors=fixed(preprocessors),
         data=fixed(data.train_data), 
-        n=ncomp_slider
+        n=ncomp_slider,
+        output=fixed(True)
     )
     
     # selection of preprocessing method
@@ -144,6 +147,12 @@ def preprocessors_ui(preprocessors, data):
     
     display(thres_interactive)
     display(ncomp_interactive)
+
+    # remove preprocessors from initialization
+    if 'pca' in preprocessors:
+        del preprocessors['pca']
+    if 'corr' in preprocessors:
+        del preprocessors['corr']
 
 
 #### Classifiers ####
