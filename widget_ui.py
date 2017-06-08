@@ -8,6 +8,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score ,classification_report
 import sklearn.decomposition as skdecomp
 import data_utils
+from os.path import isfile
 
 
 #### Data Preparation ####
@@ -224,7 +225,7 @@ def mlp_ui(classifiers):
         mlp.train = mlp.fit
         return mlp
 
-    classifiers['mlp'] = {'init': init_mlp}
+    classifiers['mlp'] = {'init': init_mlp, 'hl': hidden_layers}
 
 def nb_ui(classifiers):
     def init_nb():
@@ -262,7 +263,7 @@ def perform_training(
     print('Training {}'.format(classifier))
     start_time = time.time()
     
-    # Otionally remove Pearson correlated features
+    # Optionally remove Pearson correlated features
     if 'corr' in preprocessors:
         data.train_data = data.train_data.drop(preprocessors['corr'], axis=1) 
     
@@ -396,10 +397,19 @@ def perform_prediction(
         classifier_str = classifier_name.replace(' ', '')
         pca_str = preprocessors['pca'].n_components_ \
                   if 'pca' in preprocessors else 'False'
-        sample_str = str(data.sample_rate).replace('.', '')
+        corr_str = '_'.join(preprocessors['corr']) \
+                  if 'corr' in preprocessors else 'False'
+        if classifier_name == 'Naive Bayes':
+            classifier_str = "NB"
+        else:
+            print(classifiers['mlp']['hl'])
+            classifier_str = "MLP_{}".format("_".join([str(i) for i in classifiers['mlp']['hl']]))
+
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        np.save("results/{}_pca_{}_sample_{}_time_{}".format(
-            classifier_str, pca_str, sample_str, timestamp), full_prediction)
+        np.save("results/{}_pca_{}_corr_{}_time_{}".format(
+            classifier_str, pca_str, corr_str, timestamp), full_prediction)
+        if not isfile("results/TrueLabels.npy"):
+            np.save("results/TrueLabels", data.test_data['# label'])
 
     # give early evaluation
     print("Accuracy: {:0.2f}".format(accuracy_score(
