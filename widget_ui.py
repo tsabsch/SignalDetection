@@ -1,6 +1,7 @@
 from ipywidgets import *
 from IPython.display import display
 import numpy as np
+import pandas as pd
 import time
 import datetime
 from sklearn.neural_network import MLPClassifier
@@ -285,11 +286,18 @@ def perform_training(
     display(progress)
     
     # process data in windows
-    for i in range(0, data.ntrain, window_size):
-        progress.value = i
-        window = data.train_data[i:i + window_size - 1].compute()
-        train_on_window(preprocessors, classifier, window)
-    progress.value = data.ntrain
+    iterator = data.train_data.iterrows()
+    window = np.zeros((0, len(data.train_data.columns)))
+    
+    for idx, row in enumerate(iterator):
+        window = np.append(window, [row[1]], axis=0)
+        if len(window) == window_size:
+            train_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
+            window = np.zeros((0, len(data.train_data.columns)))
+            progress.value = idx
+    if len(window) > 0:
+        train_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
+        progress.value = data.ntrain
 
     print('Time taken: {}'.format(time.time() - start_time))
 
@@ -379,12 +387,20 @@ def perform_prediction(
     full_prediction = np.array([])
     
     # process data in windows
-    for i in range(0, data.ntest, window_size):
-        progress.value = i
-        window = data.test_data[i:i + window_size - 1].compute()
-        prediction = predict_on_window(preprocessors, classifier, window)
+    iterator = data.test_data.iterrows()
+    window = np.zeros((0, len(data.test_data.columns)))
+
+    for idx, row in enumerate(iterator):
+        window = np.append(window, [row[1]], axis=0)
+        if window.shape[0] == window_size:
+            prediction = predict_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
+            full_prediction = np.append(full_prediction, prediction)
+            window = np.zeros((0, len(data.test_data.columns)))
+            progress.value = idx
+    if len(window) > 0:
+        prediction = predict_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
         full_prediction = np.append(full_prediction, prediction)
-    progress.value = data.ntest
+        progress.value = data.ntest
 
     # save result to file
     if to_save:
