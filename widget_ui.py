@@ -6,7 +6,7 @@ import time
 import datetime
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import accuracy_score ,classification_report
+from sklearn.metrics import confusion_matrix
 import sklearn.decomposition as skdecomp
 import data_utils
 from os.path import isfile
@@ -384,22 +384,21 @@ def perform_prediction(
     )
     display(progress)
     
-    full_prediction = np.array([])
-    
     # process data in windows
     iterator = data.test_data.iterrows()
     window = np.zeros((0, len(data.test_data.columns)))
+    conf_mat = np.zeros((2, 2))
 
     for idx, row in enumerate(iterator):
         window = np.append(window, [row[1]], axis=0)
         if window.shape[0] == window_size:
             prediction = predict_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
-            full_prediction = np.append(full_prediction, prediction)
+            conf_mat += confusion_matrix(window[:,0], prediction)
             window = np.zeros((0, len(data.test_data.columns)))
             progress.value = idx
     if len(window) > 0:
         prediction = predict_on_window(preprocessors, classifier, pd.DataFrame(window, columns=data.train_data.columns))
-        full_prediction = np.append(full_prediction, prediction)
+        conf_mat += confusion_matrix(window[:,0], prediction)
         progress.value = data.ntest
 
     # save result to file
@@ -412,19 +411,16 @@ def perform_prediction(
         if classifier_name == 'Naive Bayes':
             classifier_str = "NB"
         else:
-            print(classifiers['mlp']['hl'])
             classifier_str = "MLP_{}".format("_".join([str(i) for i in classifiers['mlp']['hl']]))
 
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         np.save("results/{}_pca_{}_corr_{}_time_{}".format(
-            classifier_str, pca_str, corr_str, timestamp), full_prediction)
-        if not isfile("results/TrueLabels.npy"):
-            np.save("results/TrueLabels", data.test_data['# label'])
+            classifier_str, pca_str, corr_str, timestamp), conf_mat)
 
+    print(conf_mat)
     # give early evaluation
-    print("Accuracy: {:0.2f}".format(accuracy_score(
-            data.test_data['# label'], full_prediction)))
-    print(classification_report(data.test_data['# label'], full_prediction))
+    accuracy = (conf_mat[0,0] + conf_mat[1,1]) / np.sum(conf_mat)
+    print("Accuracy: {:0.4f}".format(accuracy))
 
 def prediction_ui(data, sample_data, preprocessors, classifiers):
     use_sample_data = Checkbox(
