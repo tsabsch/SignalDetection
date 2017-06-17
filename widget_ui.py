@@ -158,9 +158,6 @@ def preprocessors_ui(preprocessors, data):
 
 #### Classifiers ####
 
-def set_max_iter(m, max_iter):
-    max_iter[0] = m
-
 def update_hidden_layer_size(hidden_layers, size, i):
     hidden_layers[i] = size
 
@@ -195,22 +192,6 @@ def configure_hidden_layers(n, hidden_layer_box, hidden_layers):
 def mlp_ui(classifiers):
     hidden_layer_box = [None]
     hidden_layers = [20, 20]
-    max_iter = [30]
-
-    max_iter_slider = IntSlider(
-        value=30,
-        min=10,
-        max=500,
-        step=10,
-        description='Max iterations:',
-        continuous_update=False,
-        layout=Layout(width='80%')
-    )
-    i = interact(
-        set_max_iter, 
-        m=max_iter_slider,
-        max_iter=fixed(max_iter)
-    )
 
     nhidden = IntSlider(
         value=2,
@@ -230,7 +211,7 @@ def mlp_ui(classifiers):
 
     def init_mlp():
         mlp = MLPClassifier(hidden_layer_sizes=hidden_layers, 
-                            max_iter=max_iter[0], 
+                            max_iter=400, 
                             warm_start=True)
         mlp.train = mlp.fit
         return mlp
